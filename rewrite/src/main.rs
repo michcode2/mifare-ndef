@@ -1,5 +1,9 @@
 use std::process::Command;
 fn main() {
+
+    let mfu = true;
+    let auto = false;
+
     let url = "http://images.michcode.space/shrimple.gif";
     let url_bytes = url.as_bytes();
     let url_len = url_bytes.len() + 1;
@@ -14,17 +18,34 @@ fn main() {
 
     let tlv_prefix: [u8; 2] = [0x03,  without_mifare_simple.len() as u8 ];
 
-    let full = format!("{}{}{}", hex::encode(&tlv_prefix), hex::encode(without_mifare_simple), "fe");
-    println!("{}\n{}", full, url_len);
+//    let full = format!("{}{}{}", hex::encode(&tlv_prefix), hex::encode(without_mifare_simple), "fe");
+    let mut full = format!("{}", hex::encode(without_mifare_simple));
 
-    let output = Command::new("../../proxmark3/pm3")
-        .args(["-c",&format!("hf mf ndefwrite -d {}", full)])
-        .output().expect("didnt run right");
-    output.stdout.iter().for_each(|&a| print!("{}", a as char));
-    println!(" --- written --- ");
-    
-    let output = Command::new("../../proxmark3/pm3")
-        .args(["-c", "hf mf ndefread"])
-        .output().expect("didnt run right");
-    output.stdout.iter().for_each(|&a| print!("{}", a as char));
+    if !mfu{
+        println!("{}\n{}", full, url_len);
+    } else {
+        while ( full.len() % 32 != 0) {
+            full += "00";
+        }
+        let mut output_vec = vec![];
+        for index in 0..(full.len()/32){
+            let start = index * 32;
+            output_vec.push(&full[start..start + 32]);
+        }
+        println!("{full}");
+        println!("{:?}", output_vec);
+    }
+
+    if auto {
+        let output = Command::new("../../proxmark3/pm3")
+            .args(["-c",&format!("hf mf ndefwrite -d {}", full)])
+            .output().expect("didnt run right");
+        output.stdout.iter().for_each(|&a| print!("{}", a as char));
+        println!(" --- written --- ");
+        
+        let output = Command::new("../../proxmark3/pm3")
+            .args(["-c", "hf mf ndefread"])
+            .output().expect("didnt run right");
+        output.stdout.iter().for_each(|&a| print!("{}", a as char));
+    }
 }
